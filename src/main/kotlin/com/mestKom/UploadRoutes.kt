@@ -4,9 +4,7 @@ import com.google.gson.Gson
 
 import com.mestKom.data.video.Video
 import com.mestKom.data.video.VideoJSON
-import com.mestKom.requests.RegRequest
 import com.mestKom.responses.UpdateResponse
-import com.mestKom.responses.VideoResponse
 import com.mestKom.sources.UserDataSource
 import com.mestKom.sources.VideoDataSource
 import io.ktor.http.*
@@ -15,8 +13,6 @@ import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.util.cio.*
-import io.ktor.utils.io.*
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -45,12 +41,12 @@ fun Route.uploadVideo(videoDataSource: VideoDataSource){
         }
         println(fileDescriptor)
 
-        var videoJson = Gson().fromJson(/* json = */ fileDescriptor, /* classOfT = */ VideoJSON::class.java)
+        val videoJson = Gson().fromJson(/* json = */ fileDescriptor, /* classOfT = */ VideoJSON::class.java)
 
         println("fileName: ${videoJson.name}")
         val id = UUID.randomUUID().toString()
         println("id: ${id}")
-        var video = Video(
+        val video = Video(
             descriptor = videoJson.description,
             latitude = videoJson.latitude,
             longitude = videoJson.longitude,
@@ -81,18 +77,8 @@ fun Route.lastChange(videoDataSource: VideoDataSource, userDataSource: UserDataS
 }
 
 fun Route.getVideo(videoDataSource: VideoDataSource){
-    post("getVideo") {
-        val request = kotlin.runCatching { call.receiveNullable<VideoResponse>() }.getOrNull() ?: kotlin.run{
-            call.respond(HttpStatusCode.Conflict, "Not json")
-            return@post
-        }
-        val video = videoDataSource.getVideoById(request.idVideo)
-        val file = File(video!!.path)
-        call.response.header(
-            HttpHeaders.ContentDisposition,
-            ContentDisposition.Attachment.withParameter(ContentDisposition.Parameters.FileName, video.name).toString()
-        )
-        call.respondFile(file)
+    get("video/{id}") {
+        val video = videoDataSource.getVideoById(call.parameters["id"]!!)!!
+        call.respondFile(File(video.path))
     }
-
 }
